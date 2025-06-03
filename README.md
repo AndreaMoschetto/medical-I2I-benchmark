@@ -1,2 +1,2 @@
 # FlowMatching-MREConversion
-Conversion from T1 to T2 MRE based on a Flow Matching Network
+Flow-Matching-based synthesis of MRE-like T2-weighted maps from T1-weighted MRI
