@@ -192,3 +192,10 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+#Checkpoints and data
+.ipynb_checkpoint
+baseline_checkpoints/
+checkpoints/
+data/
+outputs/
