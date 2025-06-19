@@ -193,7 +193,7 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
 
 
 def main():
-    # ---------- Dataset and DataLoader setup ----------
+    # ---------- Dataset and Model setup ----------
     transform = transforms.Compose([
         transforms.Pad(padding=(5, 3, 5, 3), fill=0),
         transforms.ToTensor(),  # Normalize to [0, 1]
