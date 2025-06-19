@@ -23,7 +23,7 @@ parser.add_argument('--lr_min', type=float, default=1e-6, help="Minimum learning
 parser.add_argument('--num_workers', type=int, default=2, help="Number of workers for DataLoader")
 parser.add_argument('--batchsize', type=int, default=6, help="Batch size")
 parser.add_argument('--epochs', type=int, default=300, help="Number of training epochs")
-parser.add_argument('--expname', type=str, default='unetflow-t1t2-s300e', help="Experiment name")
+
 args = parser.parse_args()
 
 # -------------- Generation function ----------
@@ -213,7 +213,7 @@ def main():
     )
     # ---------- Model training ----------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    exp_name = "unetflow-noiset1t2-s300e"
+    exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
     best_modelpath = train_flow(
         model=model,
@@ -221,7 +221,7 @@ def main():
         val_loader=val_loader,
         project='flowmatching-t1-to-t2',
         exp_name=exp_name,
-        notes="Small UNet flow model for directional diffusion from T1 + noise to T2. 300 epochs.",
+        notes="Small UNet flow model for directional diffusion from T1 + noise to T2.",
         n_epochs=args.epochs,
         lr=args.lr,
         generation_steps=300)

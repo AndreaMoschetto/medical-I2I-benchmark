@@ -20,12 +20,12 @@ from src.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_
 # -------------- Argument parser setup ----------
 
 parser = argparse.ArgumentParser(description="Train a flow matching model from T1 to T2.")
-parser.add_argument('--lr', type=float, default=3e-4, help="Learning rate")
-parser.add_argument('--lr_min', type=float, default=1e-6, help="Minimum learning rate for CosineAnnealingLR")
+parser.add_argument('--lr_g', type=float, default=0.0002, help="Learning rate for generator")
+parser.add_argument('--lr_d', type=float, default=0.00005, help="Learning rate for discriminator")
 parser.add_argument('--num_workers', type=int, default=4, help="Number of workers for DataLoader")
 parser.add_argument('--batchsize', type=int, default=128, help="Batch size")
 parser.add_argument('--epochs', type=int, default=300, help="Number of training epochs")
-parser.add_argument('--expname', type=str, default='unetflow-t1t2-s300e', help="Experiment name")
+
 args = parser.parse_args()
 
 # ------------------ Model --------------------
@@ -439,7 +439,7 @@ def main():
 
     # ---------- Model training ----------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    exp_name = "pix2pix-t1t2-brain300e"
+    exp_name = f"pix2pix-t1t2-brain{args.epochs}e"
     prediction_dir = f"{OUTPUT_DIR}/predictions/{exp_name}"
     best_path_g, _ = train_GAN(
         netG=netG,
@@ -449,10 +449,10 @@ def main():
         project="FlowMatching-Baselines",
         exp_name=exp_name,
         notes="Baseline Pix2Pix for T1-T2 conversion",
-        n_epochs=300,
+        n_epochs=args.epochs,
         n_epochs_decay=100,
-        lr_g=0.0002,
-        lr_d=0.00005,
+        lr_g=args.lr_g,
+        lr_d=args.lr_d,
         beta1=0.5,
         lambda_l1=100.0
     )
@@ -478,7 +478,7 @@ def main():
             just_one_batch=False)
 
         out_dataset = PredictionDataset(prediction_dir)
-        summary = compute_ssim_from_dataset(out_dataset)
+        summary = compute_ssim_from_dataset(out_dataset, wandb_run=run)
     summary
 
 
