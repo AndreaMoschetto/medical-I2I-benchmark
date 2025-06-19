@@ -15,7 +15,7 @@ CHECKPOINTS_PATH = '/home/andrea_moschetto/FlowMatching-MREConversion/checkpoint
 BACKUP_PATH = f'{CHECKPOINTS_PATH}/backups'
 
 
-def ensure_checkpoints_dir():
+def ensure_checkpoint_dirs():
     if not os.path.exists(BACKUP_PATH):
         os.makedirs(BACKUP_PATH)
 
