@@ -10,10 +10,10 @@ from torch.utils.data import DataLoader
 from torch import Tensor
 from generative.networks.nets import DiffusionModelUNet
 import wandb
-from tqdm import tqdm, trange
+from tqdm import trange
 
-from src.datasets import PredictionDataset, UnifiedBrainDataset
-from src.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
+from t1t2converter.datasets import PredictionDataset, UnifiedBrainDataset
+from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
 
 # -------------- Argument parser setup ----------
 
@@ -33,15 +33,11 @@ def euler_step(model: DiffusionModelUNet, x_t: Tensor, t_start: Tensor, t_end: T
     # delta_t shape (B, 1, 1, 1)
     delta_t = (t_end - t_start).view(-1, 1, 1, 1)
 
-    # model si aspetta t come tensor (B,)
+    # model expects t as a tensor of shape (B,)
     v_hat = model(x_t, t_start)
 
-    x_t_noise = x_t[:, 0:1, :, :]  # [B, 1, H, W]
-    x_t_cond = x_t[:, 1:2, :, :]  # [B, 1, H, W], che è T1
+    x_next = x_t + delta_t * v_hat
 
-    x_next_noise = x_t_noise + delta_t * v_hat
-
-    x_next = torch.cat([x_next_noise, x_t_cond], dim=1)  # [B, 2, H, W]
     return x_next
 
 
@@ -52,18 +48,19 @@ def generate(model: nn.Module, condition: Tensor, gen_steps: int = 20):
     device = condition.device
     batch_size = condition.shape[0]
 
-    time_steps = torch.linspace(0.0, 1.0, gen_steps + 1, device=device, dtype=torch.float32)
+    time_steps = torch.linspace(
+        0.0, 1.0, gen_steps + 1, device=device, dtype=torch.float32)
 
-    x = torch.cat([torch.randn_like(condition, device=device), condition], dim=1)  # [B, 2, H, W]
+    x = condition
     for i in range(gen_steps):
         t_start = time_steps[i].expand(batch_size)
         t_end = time_steps[i + 1].expand(batch_size)
         x = euler_step(model, x_t=x, t_start=t_start, t_end=t_end)
 
-    return x[:, 0:1, :, :]  # [B, 1, H, W]
-
+    return x
 
 # ------------------ Training function ----------
+
 
 def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader, val_loader: DataLoader, project: str, exp_name: str, notes: str, n_epochs: int = 10, lr: float = 1e-3, generation_steps: int = 100):
     with wandb.init(
@@ -77,7 +74,7 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
             'batch_size': train_loader.batch_size,
             'num_workers': train_loader.num_workers,
             'optimizer': 'Adam',
-            'learning_rate': f'{lr} -> 1e-6',
+            'learning_rate': lr,
             'loss_function': 'MSELoss',
             'generation_steps': generation_steps,
             'device': str(torch.cuda.get_device_name(0)
@@ -85,7 +82,8 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
         }
     ) as run:
         ensure_checkpoint_dirs()
-        print("Using", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
+        print("Using", torch.cuda.get_device_name(0)
+              if torch.cuda.is_available() else "CPU")
 
         model.to(device)
         model.train()
@@ -102,20 +100,19 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
             # Training
             model.train()
             train_losses = []
-            for batch in tqdm(train_loader, desc=f"Training epoch {e}"):
+            for batch in train_loader:
                 x_1 = batch["t2"].to(device)  # [B, 1, H, W]
-                x_0_cond = batch["t1"].to(device)  # [B, 1, H, W]  # torch.randn_like(x_1).to(device)  # [B, 1, H, W]
-                x_0_noise = torch.randn_like(x_0_cond).to(device)  # [B, 1, H, W]
-
+                # [B, 1, H, W]  # torch.randn_like(x_1).to(device)  # [B, 1, H, W]
+                x_0 = batch["t1"].to(device)
                 # add the corresponding t1 to the second channel of x_0
-                B = x_0_cond.shape[0]
+
+                B = x_0.shape[0]
                 t = torch.rand(B, device=device)  # B
+
                 t_img = t.view(B, 1, 1, 1)  # [B, 1, 1, 1] for broadcasting
 
-                x_t = (1 - t_img) * x_0_noise + t_img * x_1  # [B, 1, H, W]
-                x_t = torch.cat([x_t, x_0_cond], dim=1)  # [B, 2, H, W]
-
-                dx_t = x_1 - x_0_noise  # [B, 1, H, W]
+                x_t = (1 - t_img) * x_0 + t_img * x_1         # [B, 1, H, W]
+                dx_t = x_1 - x_0                              # [B, 1, H, W]
 
                 optimizer.zero_grad()
                 pred = model(x_t, t)  # [B, 1, H, W]
@@ -132,14 +129,12 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
             with torch.no_grad():
                 for batch in val_loader:
                     x_1 = batch["t2"].to(device)
-                    x_0_cond = batch["t1"].to(device)
-                    x_0_noise = torch.randn_like(x_0_cond).to(device)  # [B, 1, H, W]
-                    B = x_0_cond.shape[0]
+                    x_0 = batch["t1"].to(device)
+                    B = x_0.shape[0]
                     t = torch.rand(B, device=device)
                     t_img = t.view(B, 1, 1, 1)
-                    x_t = (1 - t_img) * x_0_noise + t_img * x_1
-                    x_t = torch.cat([x_t, x_0_cond], dim=1)  # [B, 2, H, W]
-                    dx_t = x_1 - x_0_noise
+                    x_t = (1 - t_img) * x_0 + t_img * x_1
+                    dx_t = x_1 - x_0
 
                     pred = model(x_t, t)
                     val_loss = criterion(pred, dx_t)
@@ -155,8 +150,10 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
                 sample_batch = next(iter(val_loader))  # just one batch
                 t1_gt = sample_batch["t1"][0].unsqueeze(0).to(device)
                 t2_gt = sample_batch["t2"][0].to(device)  # [1, 1, H, W]
-                t2_gen = generate(model=model, condition=t1_gt, gen_steps=generation_steps)  # [1, 1, H, W]
-                imgs = torch.stack([t1_gt.squeeze(0), t2_gt, normalize_image(t2_gen.squeeze(0))], dim=0)
+                t2_gen = generate(model=model, condition=t1_gt,
+                                  gen_steps=generation_steps)
+                imgs = torch.stack([t1_gt.squeeze(0), t2_gt, normalize_image(
+                    t2_gen.squeeze(0))], dim=0)  # [3, 1, H, W]
                 grid = torchvision.utils.make_grid(imgs, nrow=3)
 
                 if batch_val_loss < best_val_loss:
@@ -181,13 +178,14 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
                         'optimizer_state_dict': optimizer.state_dict(),
                     }, path)
                     run.log({
-                        "each5e_generation": [wandb.Image(grid, caption=f"Epoch {e+1}")]
+                        "each5e_generation": [wandb.Image(grid, caption=f"Epoch {e + 1}")]
                     })
 
         end_time = time.time()
         elapsed_time = end_time - start_time
         run.log({"total_running_hours": elapsed_time // 3600})
-        print(f"Training completed in {elapsed_time // 60:.0f}m {elapsed_time % 60:.0f}s")
+        print(
+            f"Training completed in {elapsed_time // 60:.0f}m {elapsed_time % 60:.0f}s")
     print("Training complete.")
     return best_model_path
 
@@ -208,12 +206,12 @@ def main():
 
     model = DiffusionModelUNet(
         spatial_dims=2,  # 2D
-        in_channels=2,  # x + noise
-        out_channels=1,  # predicts delta_x_t
+        in_channels=1,  # x
+        out_channels=1,  # predice delta_x_t
     )
     # ---------- Model training ----------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
+    exp_name = f"unetflow-t1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
     best_modelpath = train_flow(
         model=model,
@@ -221,7 +219,7 @@ def main():
         val_loader=val_loader,
         project='flowmatching-t1-to-t2',
         exp_name=exp_name,
-        notes="Small UNet flow model for directional diffusion from T1 + noise to T2.",
+        notes="Small UNet flow model for directional diffusion from T1 to T2.",
         n_epochs=args.epochs,
         lr=args.lr,
         generation_steps=300)
@@ -239,7 +237,7 @@ def main():
         out_dataset = PredictionDataset(directory=prediction_dir)
         summary = compute_ssim_from_dataset(out_dataset, wandb_run=run)
 
-    summary
+        print(summary)
 
 
 if __name__ == "__main__":

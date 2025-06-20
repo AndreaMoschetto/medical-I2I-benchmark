@@ -2,6 +2,7 @@ from skimage import filters
 import os
 import numpy as np
 import torch
+from torch import nn
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -165,3 +166,13 @@ def compute_ssim_from_dataset(dataset, wandb_run: Run = None):
         wandb_run.log({"eval/psnr_var": summary["Variance"][3]})
 
     return summary
+
+
+# Initialize weights (optional, often helpful for GANs)
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0.0)

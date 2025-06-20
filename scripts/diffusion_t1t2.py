@@ -15,8 +15,8 @@ from generative.networks.schedulers import DDPMScheduler
 import wandb
 from tqdm import trange
 
-from src.datasets import PredictionDataset, UnifiedBrainDataset
-from src.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
+from t1t2converter.datasets import PredictionDataset, UnifiedBrainDataset
+from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
 
 # -------------- Argument parser setup ----------
 
@@ -221,8 +221,7 @@ def main():
         generate_and_save_predictions(model, test_loader, device, output_dir=prediction_dir, generation_f=generate, wandb_run=run)
         out_dataset = PredictionDataset(directory=prediction_dir)
         summary = compute_ssim_from_dataset(out_dataset, wandb_run=run)
-
-    summary
+        print(summary)
 
 
 if __name__ == "__main__":

@@ -16,9 +16,9 @@ import wandb
 from torch import Tensor, nn
 from tqdm import trange
 
-from src.datasets import PredictionDataset, UnifiedBrainDataset
-from src.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
-
+from t1t2converter.datasets import PredictionDataset, UnifiedBrainDataset
+from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image, weights_init
+from t1t2converter.models import NLayerDiscriminator2D
 # -------------- Argument parser setup ----------
 
 parser = argparse.ArgumentParser(description="Train a flow matching model from T1 to T2.")
@@ -30,69 +30,13 @@ parser.add_argument('--epochs', type=int, default=300, help="Number of training 
 
 args = parser.parse_args()
 
-# ------------------ Model --------------------
-
-
-class NLayerDiscriminator2D(nn.Module):
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.InstanceNorm2d):
-        super(NLayerDiscriminator2D, self).__init__()
-        if type(norm_layer) == functools.partial:  # noqa # no need to use bias as BatchNorm2d has affine parameters
-            use_bias = norm_layer.func == nn.InstanceNorm2d
-        else:
-            use_bias = norm_layer == nn.InstanceNorm2d
-
-        kw = 4  # kernel width
-        padw = 1  # padding width
-        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]
-        nf_mult = 1
-        nf_mult_prev = 1
-        for n in range(1, n_layers):  # gradually increase the number of filters
-            nf_mult_prev = nf_mult
-            nf_mult = min(2 ** n, 8)
-            sequence += [
-                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-                norm_layer(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
-            ]
-
-        nf_mult_prev = nf_mult
-        nf_mult = min(2 ** n_layers, 8)
-        sequence += [
-            nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-            norm_layer(ndf * nf_mult),
-            nn.LeakyReLU(0.2, True)
-        ]
-
-        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
-        self.model = nn.Sequential(*sequence)
-
-    def forward(self, input):
-        return self.model(input)
 
 # -------------- Generation function ----------
-
-
 def generate(model: DiffusionModelUNet, condition: Tensor, gen_steps: int = 20):
     device = next(model.parameters()).device
     return model(x=condition, timesteps=torch.zeros(condition.shape[0], device=device))
 
 # ------------------ Training function ----------
-
-
-def get_norm_layer():
-    norm_layer = functools.partial(nn.InstanceNorm3d, affine=False, track_running_stats=False)
-    return norm_layer
-
-# Initialize weights (optional, often helpful for GANs)
-
-
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0.0)
 
 
 def train_GAN(unetG: DiffusionModelUNet, netD: NLayerDiscriminator2D, train_loader: DataLoader, val_loader: DataLoader, project: str, exp_name: str, notes: str, n_epochs: int = 200, n_epochs_decay: int = 100, lr_g: float = 0.0002, lr_d: float = 0.00005, beta1: float = 0.5, lambda_l1: float = 100.0):
@@ -417,7 +361,7 @@ def main():
 
         out_dataset = PredictionDataset(prediction_dir)
         summary = compute_ssim_from_dataset(out_dataset, wandb_run=run)
-    summary
+        print(summary)
 
 
 if __name__ == "__main__":
