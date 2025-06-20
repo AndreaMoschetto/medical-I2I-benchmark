@@ -323,12 +323,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"pix2pix-t1t2-brain{args.epochs}e"
     prediction_dir = f"{OUTPUT_DIR}/predictions/{exp_name}"
+    project_name = 'FlowMatching-Baselines'
+
     best_path_g, _ = train_GAN(
         netG=unetG,
         netD=netD,
         train_loader=train_loader,
         val_loader=val_loader,
-        project="FlowMatching-Baselines",
+        project=project_name,
         exp_name=exp_name,
         notes="Baseline Unet2Pix for T1-T2 conversion",
         n_epochs=args.epochs,
@@ -346,7 +348,7 @@ def main():
 
     # ---------- Model evaluation and prediction generation ----------
     with wandb.init(
-        project='FlowMatching-Baselines',
+        project=project_name,
         name=f'evaluation-{exp_name}',
         notes="Evaluation of the diffusion model on the test set.",
     ) as run:

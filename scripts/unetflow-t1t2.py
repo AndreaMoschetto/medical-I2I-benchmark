@@ -213,11 +213,13 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"unetflow-t1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
+    project_name = 'flowmatching-t1-to-t2'
+
     best_modelpath = train_flow(
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
-        project='flowmatching-t1-to-t2',
+        project=project_name,
         exp_name=exp_name,
         notes="Small UNet flow model for directional diffusion from T1 to T2.",
         n_epochs=args.epochs,
@@ -229,7 +231,7 @@ def main():
     model.eval()
     # ---------- Model evaluation and prediction generation ----------
     with wandb.init(
-        project='flowmatching-t1-to-t2',
+        project=project_name,
         name=f'evaluation-{exp_name}',
         notes="Evaluation of the flow model on the test set.",
     ) as run:

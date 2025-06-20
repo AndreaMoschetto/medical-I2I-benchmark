@@ -194,13 +194,14 @@ def main():
     exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
     num_train_timesteps = 1000
+    project_name = 'FlowMatching-Baselines'
 
     best_model_path = train_diffusion(
         model=model,
         inferer=inferer,
         train_loader=train_loader,
         val_loader=val_loader,
-        project="FlowMatching-Baselines",
+        project=project_name,
         exp_name=exp_name,
         notes="Training a diffusion model for T1-T2 brain image generation.",
         n_epochs=args.epochs,
@@ -213,7 +214,7 @@ def main():
     model.eval()
     # ---------- Model evaluation and prediction generation ----------
     with wandb.init(
-        project='flowmatching-t1-to-t2',
+        project=project_name,
         name=f'evaluation-{exp_name}',
         notes="Evaluation of the flow model on the test set.",
     ) as run:
