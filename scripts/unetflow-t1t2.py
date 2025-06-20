@@ -217,6 +217,7 @@ def main():
 
     best_modelpath = train_flow(
         model=model,
+        device=device,
         train_loader=train_loader,
         val_loader=val_loader,
         project=project_name,

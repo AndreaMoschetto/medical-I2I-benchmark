@@ -39,7 +39,7 @@ def generate(model: DiffusionModelUNet, condition: Tensor, gen_steps: int = 20):
 # ------------------ Training function ----------
 
 
-def train_GAN(unetG: DiffusionModelUNet, netD: NLayerDiscriminator2D, train_loader: DataLoader, val_loader: DataLoader, project: str, exp_name: str, notes: str, n_epochs: int = 200, n_epochs_decay: int = 100, lr_g: float = 0.0002, lr_d: float = 0.00005, beta1: float = 0.5, lambda_l1: float = 100.0):
+def train_GAN(unetG: DiffusionModelUNet, netD: NLayerDiscriminator2D, device: str, train_loader: DataLoader, val_loader: DataLoader, project: str, exp_name: str, notes: str, n_epochs: int = 200, n_epochs_decay: int = 100, lr_g: float = 0.0002, lr_d: float = 0.00005, beta1: float = 0.5, lambda_l1: float = 100.0):
     with wandb.init(
         project=project,
         name=exp_name,
@@ -64,7 +64,6 @@ def train_GAN(unetG: DiffusionModelUNet, netD: NLayerDiscriminator2D, train_load
     ) as run:
         ensure_checkpoint_dirs()
         start_time = time.time()
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {device}")
         # --- Models ---
         unetG = unetG.to(device)
@@ -328,6 +327,7 @@ def main():
     best_path_g, _ = train_GAN(
         netG=unetG,
         netD=netD,
+        device=device,
         train_loader=train_loader,
         val_loader=val_loader,
         project=project_name,

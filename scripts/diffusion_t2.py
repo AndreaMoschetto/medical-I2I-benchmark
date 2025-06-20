@@ -11,6 +11,7 @@ from torch import Tensor
 from generative.inferers import DiffusionInferer
 from generative.networks.nets import DiffusionModelUNet
 from generative.networks.schedulers import DDPMScheduler
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import wandb
 from tqdm import trange
@@ -69,8 +70,8 @@ def train_diffusion(model: DiffusionModelUNet, device: str, inferer: DiffusionIn
         model.train()
 
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=args.lr_min)
         criterion = nn.MSELoss()
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=args.lr_min)
 
         best_val_loss = float("inf")
         best_model_path = None
@@ -82,15 +83,15 @@ def train_diffusion(model: DiffusionModelUNet, device: str, inferer: DiffusionIn
             train_losses = []
             for batch in train_loader:
                 t2_targets = batch["t2"].to(device)  # [B, 1, H, W]
-                t1_cond = batch["t1"].to(device)  # [B, 1, H, W]  # torch.randn_like(x_1).to(device)  # [B, 1, H, W]
                 noise = torch.randn_like(t2_targets).to(device)
 
                 B = t2_targets.shape[0]
                 # Create timesteps
                 timesteps = torch.randint(0, generation_steps, (B,), device=t2_targets.device).long()
-                optimizer.zero_grad()
+
                 # Get model prediction
-                noise_pred = inferer(inputs=t2_targets, diffusion_model=model, noise=noise, timesteps=timesteps, condition=t1_cond, mode='concat')
+                optimizer.zero_grad()
+                noise_pred = inferer(inputs=t2_targets, diffusion_model=model, noise=noise, timesteps=timesteps)
 
                 loss = criterion(noise_pred.float(), noise.float())
                 train_losses.append(loss.item())
@@ -98,7 +99,6 @@ def train_diffusion(model: DiffusionModelUNet, device: str, inferer: DiffusionIn
                 loss.backward()
                 optimizer.step()
             run.log({"train_loss": sum(train_losses) / len(train_losses)})
-            run.log({"learning_rate": optimizer.param_groups[0]['lr']})
 
             # Validation
             model.eval()
@@ -106,32 +106,39 @@ def train_diffusion(model: DiffusionModelUNet, device: str, inferer: DiffusionIn
             with torch.no_grad():
                 for batch in val_loader:
                     t2_targets = batch["t2"].to(device)
-                    t1_cond = batch["t1"].to(device)
                     noise = torch.randn_like(t2_targets).to(device)
                     B = t2_targets.shape[0]
                     timesteps = torch.randint(0, generation_steps, (B,), device=t2_targets.device).long()
-                    noise_pred = inferer(inputs=t2_targets, diffusion_model=model, noise=noise, timesteps=timesteps, condition=t1_cond, mode='concat')
+                    noise_pred = inferer(inputs=t2_targets, diffusion_model=model, noise=noise, timesteps=timesteps)
                     val_loss = criterion(noise_pred.float(), noise.float())
                     val_losses.append(val_loss.item())
             batch_val_loss = sum(val_losses) / len(val_losses)
             run.log({"val_loss": batch_val_loss})
+            lr_scheduler.step()
+            run.log({"lr": lr_scheduler.get_last_lr()[0]})
             e_time = time.time() - start_e_time
             run.log({"epoch_time_minutes": e_time // 60})
 
-            lr_scheduler.step()
             # Checkpoint
             if e % 5 == 0 or e == n_epochs - 1 or batch_val_loss < best_val_loss:
-                sample_batch = next(iter(val_loader))
-                t1_gt = sample_batch["t1"][0].unsqueeze(0).to(device)
-                t2_gt = sample_batch["t2"][0].to(device)
-                noise = torch.randn_like(t1_gt).to(device)
+                sample_batch = next(iter(val_loader))  # just one batch
+                t2_target = sample_batch["t2"][0].unsqueeze(0).to(device)
+                H, W = t2_target.shape[-2:]
+                noise = torch.randn(3, 1, H, W).to(device)  # Generate 3 samples
 
                 with torch.no_grad():
-                    gen_image = inferer.sample(input_noise=noise, diffusion_model=model, scheduler=inferer.scheduler, mode='concat', conditioning=t1_gt)
-                    images = torch.stack([t1_gt.squeeze(0), t2_gt, normalize_image(gen_image.squeeze(0))], dim=0)
+                    gen_images = inferer.sample(input_noise=noise, diffusion_model=model, scheduler=inferer.scheduler)
+
+                    images = torch.stack([
+                        normalize_image(gen_images[i]) for i in range(gen_images.shape[0])
+                    ], dim=0)  # [3, 1, H, W]
+
                     grid = torchvision.utils.make_grid(images, nrow=3)
 
                 if batch_val_loss < best_val_loss:
+                    run.log({
+                        "best_model_generations": [wandb.Image(grid, caption=f"Epoch {e+1}")]
+                    })
                     path = f'{CHECKPOINTS_PATH}/checkpoint_{exp_name}_{e+1}_best.pth'
                     torch.save({
                         'epoch': e + 1,
@@ -142,19 +149,18 @@ def train_diffusion(model: DiffusionModelUNet, device: str, inferer: DiffusionIn
                         os.remove(best_model_path)
                     best_model_path = path
                     best_val_loss = batch_val_loss
-                    run.log({
-                        "best_model_generations": [wandb.Image(grid, caption=f"Epoch {e+1} - Best")]
-                    })
                 else:
+                    run.log({
+                        "each5e_generation": [wandb.Image(grid, caption=f"Epoch {e+1}")]
+                    })
                     path = f'{CHECKPOINTS_PATH}/backups/checkpoint_{exp_name}_{e+1}.pth'
+                    if os.path.exists(path):
+                        os.remove(path)
                     torch.save({
                         'epoch': e + 1,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
                     }, path)
-                    run.log({
-                        "each5e_generation": [wandb.Image(grid, caption=f"Epoch {e+1}")]
-                    })
         end_time = time.time()
         elapsed_time = end_time - start_time
         run.log({"total_running_hours": elapsed_time // 3600})
@@ -182,7 +188,7 @@ def main():
 
     model = DiffusionModelUNet(
         spatial_dims=2,  # 2D
-        in_channels=2,  # x
+        in_channels=1,  # x
         out_channels=1,  # predicts noise
     )
 
@@ -191,7 +197,7 @@ def main():
 
     # ---------- Model training ----------
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
+    exp_name = f"diffusion_t2_s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
     num_train_timesteps = 1000
     project_name = 'FlowMatching-Baselines'
@@ -204,7 +210,7 @@ def main():
         val_loader=val_loader,
         project=project_name,
         exp_name=exp_name,
-        notes="Training a diffusion model for T1-T2 brain image generation.",
+        notes="Training a diffusion model for T2 brain image generation.",
         n_epochs=args.epochs,
         lr=args.lr,
         generation_steps=num_train_timesteps

@@ -328,6 +328,7 @@ def main():
     best_path_g, _ = train_GAN(
         netG=netG,
         netD=netD,
+        device=device,
         train_loader=train_loader,
         val_loader=val_loader,
         project=project_name,
