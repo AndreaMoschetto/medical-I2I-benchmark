@@ -212,7 +212,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"unetflow-t1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
-    project_name = 'flowmatching-t1-to-t2'
+    project_name = 'Medical-I2I-Benchmark'
 
     best_modelpath = train_flow(
         model=model,

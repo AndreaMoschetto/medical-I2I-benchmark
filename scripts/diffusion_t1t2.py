@@ -20,7 +20,7 @@ from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_
 
 # -------------- Argument parser setup ----------
 
-parser = argparse.ArgumentParser(description="Train a flow matching model from T1 to T2.")
+parser = argparse.ArgumentParser(description="Train a diffusion model from T1 to T2.")
 parser.add_argument('--lr', type=float, default=3e-4, help="Learning rate")
 parser.add_argument('--lr_min', type=float, default=1e-6, help="Minimum learning rate for CosineAnnealingLR")
 parser.add_argument('--num_workers', type=int, default=2, help="Number of workers for DataLoader")
@@ -193,7 +193,7 @@ def main():
     exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
     num_train_timesteps = 1000
-    project_name = 'FlowMatching-Baselines'
+    project_name = 'Medical-I2I-Benchmark'
 
     best_model_path = train_diffusion(
         model=model,

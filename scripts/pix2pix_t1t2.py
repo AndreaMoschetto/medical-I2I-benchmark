@@ -19,7 +19,7 @@ from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_
 from t1t2converter.models import UNetGenerator2D, NLayerDiscriminator2D
 # -------------- Argument parser setup ----------
 
-parser = argparse.ArgumentParser(description="Train a flow matching model from T1 to T2.")
+parser = argparse.ArgumentParser(description="Train a pix2pix model from T1 to T2.")
 parser.add_argument('--lr_g', type=float, default=0.0002, help="Learning rate for generator")
 parser.add_argument('--lr_d', type=float, default=0.00005, help="Learning rate for discriminator")
 parser.add_argument('--num_workers', type=int, default=4, help="Number of workers for DataLoader")
@@ -322,7 +322,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"pix2pix-t1t2-brain{args.epochs}e"
     prediction_dir = f"{OUTPUT_DIR}/predictions/{exp_name}"
-    project_name = 'FlowMatching-Baselines'
+    project_name = 'Medical-I2I-Benchmark'
 
     best_path_g, _ = train_GAN(
         netG=netG,
@@ -332,7 +332,7 @@ def main():
         val_loader=val_loader,
         project=project_name,
         exp_name=exp_name,
-        notes="Baseline Pix2Pix for T1-T2 conversion",
+        notes="Pix2Pix for T1-T2 conversion",
         n_epochs=args.epochs,
         n_epochs_decay=100,
         lr_g=args.lr_g,

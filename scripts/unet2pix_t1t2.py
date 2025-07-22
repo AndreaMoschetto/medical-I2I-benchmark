@@ -321,7 +321,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"pix2pix-t1t2-brain{args.epochs}e"
     prediction_dir = f"{OUTPUT_DIR}/predictions/{exp_name}"
-    project_name = 'FlowMatching-Baselines'
+    project_name = 'Medical-I2I-Benchmark'
 
     best_path_g, _ = train_GAN(
         netG=unetG,
@@ -331,7 +331,7 @@ def main():
         val_loader=val_loader,
         project=project_name,
         exp_name=exp_name,
-        notes="Baseline Unet2Pix for T1-T2 conversion",
+        notes="Unet2Pix for T1-T2 conversion",
         n_epochs=args.epochs,
         n_epochs_decay=100,
         lr_g=args.lr_g,

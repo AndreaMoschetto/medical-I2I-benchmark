@@ -17,7 +17,7 @@ from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_
 
 # -------------- Argument parser setup ----------
 
-parser = argparse.ArgumentParser(description="Train a flow matching model from T1 to T2.")
+parser = argparse.ArgumentParser(description="Train a flow matching model from noise + T1 to T2.")
 parser.add_argument('--lr', type=float, default=3e-4, help="Learning rate")
 parser.add_argument('--lr_min', type=float, default=1e-6, help="Minimum learning rate for CosineAnnealingLR")
 parser.add_argument('--num_workers', type=int, default=2, help="Number of workers for DataLoader")
@@ -214,7 +214,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     exp_name = f"unetflow-noiset1t2-s{args.epochs}e"
     prediction_dir = f'{OUTPUT_DIR}/{exp_name}'
-    project_name = 'flowmatching-t1-to-t2'
+    project_name = 'Medical-I2I-Benchmark'
 
     best_modelpath = train_flow(
         model=model,
