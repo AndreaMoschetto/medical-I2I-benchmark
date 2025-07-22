@@ -15,7 +15,7 @@ from torch import Tensor, nn
 from tqdm import trange
 
 from t1t2converter.datasets import PredictionDataset, UnifiedBrainDataset
-from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image, weights_init
+from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, generate_and_save_predictions, normalize_image, weights_init
 from t1t2converter.models import UNetGenerator2D, NLayerDiscriminator2D
 # -------------- Argument parser setup ----------
 
@@ -61,7 +61,6 @@ def train_GAN(netG: UNetGenerator2D, netD: NLayerDiscriminator2D, device: str, t
                           if torch.cuda.is_available() else "CPU"),
         }
     ) as run:
-        ensure_checkpoint_dirs()
         start_time = time.time()
         print(f"Using device: {device}")
         # --- Models ---

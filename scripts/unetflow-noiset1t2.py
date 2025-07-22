@@ -13,7 +13,7 @@ import wandb
 from tqdm import tqdm, trange
 
 from t1t2converter.datasets import PredictionDataset, UnifiedBrainDataset
-from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, ensure_checkpoint_dirs, generate_and_save_predictions, normalize_image
+from t1t2converter.utils import CHECKPOINTS_PATH, DATAPATH, OUTPUT_DIR, compute_ssim_from_dataset, generate_and_save_predictions, normalize_image
 
 # -------------- Argument parser setup ----------
 
@@ -84,7 +84,6 @@ def train_flow(model: DiffusionModelUNet, device: str, train_loader: DataLoader,
                           if torch.cuda.is_available() else "CPU"),
         }
     ) as run:
-        ensure_checkpoint_dirs()
         print("Using", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
 
         model.to(device)

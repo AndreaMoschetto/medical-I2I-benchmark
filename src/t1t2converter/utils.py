@@ -9,11 +9,20 @@ from tqdm import tqdm
 from skimage.metrics import structural_similarity as ssim_fn, peak_signal_noise_ratio as psnr_fn
 import torch.nn.functional as F
 from wandb.sdk.wandb_run import Run
+from dotenv import load_dotenv
 
-DATAPATH = '/home/andrea_moschetto/FlowMatching-MREConversion/data'
-OUTPUT_DIR = "/home/andrea_moschetto/FlowMatching-MREConversion/outputs"
-CHECKPOINTS_PATH = '/home/andrea_moschetto/FlowMatching-MREConversion/checkpoints'
-BACKUP_PATH = f'{CHECKPOINTS_PATH}/backups'
+# Carica variabili da file .env (se presente)
+load_dotenv()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DATAPATH = os.getenv("MEDICAL_I2I_DATAPATH", os.path.join(BASE_DIR, "data"))
+OUTPUT_DIR = os.getenv("MEDICAL_I2I_OUTPUT", os.path.join(BASE_DIR, "outputs"))
+CHECKPOINTS_PATH = os.getenv("MEDICAL_I2I_CKPT", os.path.join(BASE_DIR, "checkpoints"))
+BACKUP_PATH = os.path.join(CHECKPOINTS_PATH, "backups")
+
+for path in [DATAPATH, OUTPUT_DIR, CHECKPOINTS_PATH, BACKUP_PATH]:
+    os.makedirs(path, exist_ok=True)
 
 
 def ensure_checkpoint_dirs():

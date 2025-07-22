@@ -1,21 +1,22 @@
 name: medical
 channels:
-  - conda-forge
-  - defaults
+- conda-forge
+- defaults
 dependencies:
-  - python=3.11
-  - torchvision
-  - matplotlib
-  - numpy
-  - tqdm
-  - pytorch
-  - notebook
-  - monai
-  - einops
-  - torchmetrics
-  - pandas
-  - scikit-image
-  - pip
-  - pip:
-      - monai-generative==0.2.3
-      - wandb==0.20.1
+- python=3.11
+- torchvision
+- matplotlib
+- numpy
+- tqdm
+- pytorch
+- notebook
+- monai
+- einops
+- torchmetrics
+- pandas
+- scikit-image
+- pip
+- pip:
+  - monai-generative==0.2.3
+  - wandb==0.20.1
+  - python-dotenv
