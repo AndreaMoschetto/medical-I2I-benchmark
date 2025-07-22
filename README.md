@@ -89,3 +89,50 @@ A template is provided as `.env.example`.
 If not specified, default paths are created under the project directory.
 
 ---
+
+## 🧪 Training
+
+You can train each model independently using the corresponding script in the `scripts/` directory.  
+Each script accepts command-line arguments for hyperparameters such as learning rate, batch size, number of epochs, etc.
+
+### 🔧 Example: Train the Flow Matching model
+```bash
+python scripts/unetflow_t1t2.py \
+    --lr 3e-4 \
+    --lr_min 1e-6 \
+    --batchsize 6 \
+    --epochs 300 \
+    --num_workers 4
+```
+
+### 📜 Common arguments
+
+| Argument      | Default   | Description                                           |
+|---------------|-----------|-------------------------------------------------------|
+| `--lr`        | `3e-4`    | Initial learning rate                                |
+| `--lr_min`    | `1e-6`    | Minimum LR for cosine scheduler                      |
+| `--batchsize` | `6`       | Batch size                                           |
+| `--epochs`    | `300`     | Total training epochs                                |
+| `--num_workers` | `2`     | Number of workers for data loading                   |
+
+> 🚨 Output checkpoints and logs will be saved under the path specified in your `.env` file (`MEDICAL_I2I_CKPT`, `MEDICAL_I2I_OUTPUT`), or fallback to defaults in `utils.py`.
+
+---
+
+### 🧪 Other training scripts
+
+You can replace `unetflow_t1t2.py` with any of the following:
+
+```bash
+python scripts/pix2pix_t1t2.py
+python scripts/diffusion_t2.py
+python scripts/controlnet_t1t2.py
+# ... etc.
+```
+
+Make sure each script supports the same CLI structure (you can check with `--help`):
+```bash
+python scripts/pix2pix_t1t2.py --help
+```
+
+---
