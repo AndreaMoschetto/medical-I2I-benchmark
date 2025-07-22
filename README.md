@@ -52,11 +52,11 @@ This will make the `t1t2converter` package available for import across the proje
 
 ```
 medical-I2I-benchmark/
-├── scripts/                   # Training & inference scripts for each model
+├── models/                   # Exported weights
+├── scripts/                   # Training scripts for each model
 │   ├── pix2pix_t1t2.py
 │   ├── diffusion_t2.py
 │   └── ...
-├── models/                   # Exported weights
 ├── src/
 │   └── t1t2converter/         # Core library: models, datasets, utilities
 │       ├── __init__.py
