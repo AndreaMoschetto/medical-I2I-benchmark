@@ -199,3 +199,7 @@ baseline_checkpoints/
 checkpoints/
 data/
 outputs/
+
+
+# Mac
+.DS_Store
