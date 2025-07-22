@@ -1,4 +1,4 @@
-name: medical
+name: medical-i2i
 channels:
 - conda-forge
 - defaults
