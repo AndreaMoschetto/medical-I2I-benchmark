@@ -25,11 +25,6 @@ for path in [DATAPATH, OUTPUT_DIR, CHECKPOINTS_PATH, BACKUP_PATH]:
     os.makedirs(path, exist_ok=True)
 
 
-def ensure_checkpoint_dirs():
-    if not os.path.exists(BACKUP_PATH):
-        os.makedirs(BACKUP_PATH)
-
-
 def percnorm(arr, lperc=5, uperc=99.5):
     """
     Remove outlier intensities from a brain component,
