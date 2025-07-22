@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from wandb.sdk.wandb_run import Run
 from dotenv import load_dotenv
 
-# Carica variabili da file .env (se presente)
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
